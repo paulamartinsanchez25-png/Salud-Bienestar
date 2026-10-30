@@ -1,0 +1,66 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Salud y Bienestar</title><meta name="description" content="Salud y Bienestar: comida, actividad y hábitos en una sola pantalla.">
+<meta name="theme-color" content="#d62839"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script><script src="config.js"></script>
+<style>
+:root{--sage:#8aa38b;--bg:#121615;--cd:#1c2322;--ln:#2b3533;--tx:#e8ece9;--mu:#8b9892;--red:#d62839}
+*{box-sizing:border-box}body{margin:0;font:15px system-ui,sans-serif;background:var(--bg);color:var(--tx);padding-bottom:env(safe-area-inset-bottom)}
+header{background:var(--red);color:#fff;padding:9px 14px;font-weight:700;font-size:15px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:5}
+header a{font-weight:400;font-size:12px;cursor:pointer}main{max-width:560px;margin:auto;padding:8px}
+.c{background:var(--cd);border-radius:16px;padding:10px 12px;margin:8px 0}h3{margin:0 0 6px;font-size:14px;display:flex;justify-content:space-between;align-items:center}h3 b{color:var(--sage)}
+.r{display:flex;justify-content:space-between;gap:8px;padding:4px 0;font-size:13px;color:var(--mu)}.r a{color:var(--red);cursor:pointer}
+.row{display:flex;gap:6px;align-items:center}.row>input{flex:1;min-width:0}
+button,input{font:inherit;border-radius:10px;border:1px solid var(--ln);padding:7px 10px;background:#161c1b;color:var(--tx)}input::placeholder{color:var(--mu)}input[type=date]{color-scheme:dark;flex:1;text-align:center}
+button{background:var(--sage);color:#101514;border:0;cursor:pointer;font-weight:600}button.s{background:var(--ln);color:var(--tx);font-weight:400}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:6px}.hb{display:flex;justify-content:space-between;padding:7px 0;font-size:15px;cursor:pointer}
+.hb a{color:var(--red)}.big{color:var(--sage);font-weight:700}
+#pv{position:fixed;inset:0;background:#000a;display:none;align-items:flex-end;z-index:9}#pv>div{background:var(--cd);width:100%;max-height:85vh;overflow:auto;border-radius:18px 18px 0 0;padding:14px;max-width:560px;margin:auto}
+</style></head><body>
+<header><span>❤️ SALUD Y BIENESTAR</span><a id="who"></a></header><main id="main">Cargando SALUD Y BIENESTAR…</main>
+<div id="pv"><div id="pvb"></div></div>
+<script>
+const $=s=>document.querySelector(s),q=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const iso=d=>new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10),add=(s,n)=>{const d=new Date(s+'T12:00');d.setDate(d.getDate()+n);return iso(d)};
+const M=['desayuno','comida','merienda','cena'],E=['🍳 Desayuno','🥗 Comida','🍎 Merienda','🌙 Cena'];
+const WK=['🍑 Booty','💃 Boompa','🏋️ Full Body','💪 Tren Superior','🦵 Tren Inferior','⭐ Otro'];
+const HB=[['h0','💧 Beber agua'],['h1','🏃 Hacer deporte'],['h2','📖 Leer'],['h3','🚶 Pasear'],['h4','🥦 Comer sano']];
+window.onerror=m=>{$('#main').innerHTML='<div class=c><h3>⚠️ Error</h3>'+q(m)+'</div>'};
+let sb=null;try{if(CFG.SUPA_URL)sb=supabase.createClient(CFG.SUPA_URL,CFG.SUPA_KEY)}catch(e){alert('Supabase: '+e.message+' · Revisa que SUPA_URL (https://xxxx.supabase.co) y SUPA_KEY en config.js estén bien copiadas.')}
+let user=null,db=JSON.parse(localStorage.syb||'[]'),day=iso(new Date()),pv=null,busy=false;
+const of=(k,d)=>db.filter(r=>r.kind==k&&(!d||r.date==d)),kc=rs=>rs.reduce((a,r)=>a+(r.data.items||[]).reduce((b,i)=>b+(+i.k||0),0),0);
+const cache=()=>localStorage.syb=JSON.stringify(db);
+async function put(kind,date,data,id){const r={id:id||crypto.randomUUID(),kind,date,data};db=db.filter(x=>x.id!=r.id);db.push(r);cache();V();
+ if(sb&&user){const{error}=await sb.from('records').upsert({...r,user_id:user.id,updated_at:new Date()});if(error)alert('No se pudo sincronizar: '+error.message)}}
+async function del(id){db=db.filter(x=>x.id!=id);cache();V();if(sb&&user){const{error}=await sb.from('records').delete().eq('id',id);if(error)alert(error.message)}}
+async function load(){if(!sb||!user)return;const{data,error}=await sb.from('records').select('id,kind,date,data');if(error)return alert('Error al cargar: '+error.message);
+ const loc=db.filter(l=>!data.some(d=>d.id==l.id));if(loc.length)await sb.from('records').upsert(loc.map(r=>({...r,user_id:user.id})));db=[...data,...loc];cache()}
+const out=()=>sb.auth.signOut();
+function V(){if(sb&&!user)return auth();$('#who').innerHTML=sb?'Salir':'';$('#who').onclick=sb?out:null;
+ const ae=document.activeElement,keep=ae&&ae.id&&ae.id[0]=='t'?[ae.id,ae.value]:null,vals={};M.forEach(x=>{const e=$('#t'+x);if(e)vals[x]=e.value});
+ $('#main').innerHTML=page();M.forEach(x=>{if(vals[x])$('#t'+x).value=vals[x]})}
+function auth(){$('#who').textContent='';$('#main').innerHTML=`<div class=c><h3>Entrar</h3><input id=em type=email placeholder="Correo" style="width:100%;margin-bottom:6px"><input id=pw type=password placeholder="Contraseña (mín. 6)" style="width:100%;margin-bottom:6px"><div class=row><button onclick="login()">Entrar</button><button class=s onclick="signup()">Crear cuenta</button></div></div>`}
+async function login(){const{error}=await sb.auth.signInWithPassword({email:$('#em').value,password:$('#pw').value});if(error)alert(error.message)}
+async function signup(){const{error}=await sb.auth.signUp({email:$('#em').value,password:$('#pw').value});alert(error?error.message:'Cuenta creada. Si pide confirmar, revisa tu correo.')}
+const habits=()=>[...HB,...of('habit').map(r=>[r.id,r.data.n])],hk=(id)=>`hl-${id}-${day}`;
+function page(){const m=of('meal',day),w=of('walk',day),t=of('train',day),hs=habits();
+const hr=new Date().getHours(),sal=hr>=6&&hr<13?'Buenos días':hr>=13&&hr<20?'Buenas tardes':'Buenas noches',tot=kc(m),G=1500,C=2*Math.PI*42,off=C*(1-Math.min(tot/G,1)),dif=G-tot;
+return`<div class=c style="display:flex;align-items:center;gap:14px"><svg width=110 height=110 viewBox="0 0 100 100" style="flex:none"><circle cx=50 cy=50 r=42 fill=none stroke="#2b3533" stroke-width=9 /><circle cx=50 cy=50 r=42 fill=none stroke="#8aa38b" stroke-width=9 stroke-linecap=round stroke-dasharray="${C}" stroke-dashoffset="${off}" transform="rotate(-90 50 50)" style="transition:stroke-dashoffset .6s"/><text x=50 y=50 text-anchor=middle fill="#e8ece9" font-size=20 font-weight=700>${tot}</text><text x=50 y=65 text-anchor=middle fill="#8b9892" font-size=9>de ${G} kcal</text></svg><div><div style="font-size:19px;font-weight:700">${sal}, Paula 🌿</div><div style="color:var(--mu);font-size:13px;margin-top:4px">${dif>=0?'Te quedan '+dif+' kcal':'Has pasado '+(-dif)+' kcal'}</div></div></div>
+<div class="row"><button class=s onclick="day=add(day,-1);V()">◀</button><input type=date value="${day}" onchange="day=this.value||day;V()"><button class=s onclick="day=add(day,1);V()">▶</button></div>
+<div class=c><h3>🍽️ Comida <b>${kc(m)} kcal</b></h3>${M.map((x,i)=>{const rs=m.filter(r=>r.data.meal==x);return`<div style="margin:6px 0 10px"><div class=r style="color:var(--tx)"><span>${E[i]}</span><b class=big>${kc(rs)} kcal</b></div>
+${rs.map(r=>r.data.items.map(t=>`<div class=r><span>${q(t.n)} · ${q(t.q)}</span><span>${t.k}</span></div>`).join('')+`<div class=r><span></span><a onclick="del('${r.id}')">Quitar</a></div>`).join('')}
+<div class=row><input id="t${x}" placeholder="¿Qué has tomado?" onkeydown="if(event.key=='Enter')calc('${x}')"><button class=s onclick="mic('${x}')">🎤</button><button onclick="calc('${x}')">OK</button></div></div>`}).join('')}</div>
+<div class=c><h3>🚶 Caminata <b>${w.reduce((a,r)=>a+(+r.data.km||0),0).toFixed(1)} km</b></h3>${w.map(r=>`<div class=r><span>${r.data.km} km</span><a onclick="del('${r.id}')">✕</a></div>`).join('')}<div class=row><input id=km type=text inputmode=decimal placeholder="km" onkeydown="if(event.key=='Enter')walk()"><button onclick="walk()">Añadir</button></div></div>
+<div class=c><h3>💪 Pesas</h3>${t.map(r=>`<div class=r><span>${q(r.data.c)} · ${r.data.min} min</span><a onclick="del('${r.id}')">✕</a></div>`).join('')}<div class=g>${WK.map(c=>`<button class=s onclick="train(this.textContent)">${c}</button>`).join('')}</div></div>
+<div class=c><h3>✅ Hábitos <b>${hs.filter(h=>db.some(r=>r.id==hk(h[0]))).length}/${hs.length}</b></h3>${hs.map(h=>{const on=db.some(r=>r.id==hk(h[0]));return`<div class=hb><span onclick="tog('${h[0]}')" style="flex:1">${on?'✅':'⬜'} ${q(h[1])}</span>${h[0].length>2?`<a onclick="del('${h[0]}')">✕</a>`:''}</div>`}).join('')}<button class=s onclick="newh()" style="margin-top:4px">+ Hábito</button></div>`}
+function mic(x){const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return alert('Este navegador no tiene dictado: usa el micrófono del teclado.');const r=new R();r.lang='es-ES';r.onresult=e=>{$('#t'+x).value=($('#t'+x).value+' '+e.results[0][0].transcript).trim()};r.onerror=e=>alert('Voz: '+e.error);r.start()}
+async function calc(x){const t=$('#t'+x).value.trim();if(!t)return;if(!sb)return alert('Para calcular con IA hay que conectar Supabase (ver README).');if(busy)return;busy=true;
+ const{data,error}=await sb.functions.invoke('parse-food',{body:{text:t}});busy=false;if(error||!data?.items)return alert('No pude calcular: '+(error?.message||data?.error||'respuesta vacía'));pv={x,items:data.items};drawpv()}
+function drawpv(){$('#pv').style.display='flex';$('#pvb').innerHTML=`<h3>${E[M.indexOf(pv.x)]} <small style="color:var(--mu);font-weight:400">estimación · editable</small></h3>`+pv.items.map((t,i)=>`<div class=row style="margin:5px 0"><input value="${q(t.n)}" onchange="pv.items[${i}].n=this.value" style="flex:3"><input value="${q(t.q)}" onchange="pv.items[${i}].q=this.value" style="flex:3"><input type=number value="${t.k}" onchange="pv.items[${i}].k=+this.value;drawpv()" style="flex:2"><button class=s onclick="pv.items.splice(${i},1);drawpv()">✕</button></div>`).join('')+`<h3 style="margin-top:8px">Total <b>${pv.items.reduce((a,i)=>a+(+i.k||0),0)} kcal</b></h3><div class=row><button class=s onclick="$('#pv').style.display='none'" style="flex:1">Cancelar</button><button onclick="okpv()" style="flex:1">Guardar</button></div>`}
+async function okpv(){$('#pv').style.display='none';const{x,items}=pv;$('#t'+x).value='';await put('meal',day,{meal:x,items:items.map(i=>({n:i.n,q:i.q,k:+i.k||0}))})}
+function walk(){const km=+$('#km').value.replace(',','.');if(km>0)put('walk',day,{km})}
+function train(c){const m=prompt(c+' · duración en minutos:');if(m!==null)put('train',day,{c,min:+m||0})}
+const tog=id=>db.some(r=>r.id==hk(id))?del(hk(id)):put('hlog',day,{h:id},hk(id));
+function newh(){const n=prompt('Nombre del hábito (puedes empezar con un emoji):');if(n)put('habit',day,{n})}
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+(async()=>{try{if(sb){const{data}=await sb.auth.getSession();user=data.session?.user||null;await load();sb.auth.onAuthStateChange(async(_,s)=>{user=s?.user||null;if(user)await load();else{db=[];cache()}V()})}}catch(e){alert('Error al iniciar: '+e.message)}V()})();
+</script></body></html>
